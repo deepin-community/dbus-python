@@ -1,3 +1,74 @@
+dbus-python (1.3.2-5) unstable; urgency=medium
+
+  * d/rules: Set DEB_PYTHON_INSTALL_LAYOUT=deb.
+    This avoids newer Meson versions trying to install into /usr/local.
+    Mitigates: #1041537
+  * Remove version constraints unnecessary since Debian 11
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 26 Jul 2023 11:34:51 +0100
+
+dbus-python (1.3.2-4) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Set Multi-Arch: foreign on python-dbus-doc
+
+  [ Simon McVittie ]
+  * Update standards version to 4.6.2 (no changes needed)
+  * d/rules: Remove workaround for #972269 (no longer needed,
+    the bug was fixed in dwz)
+  * d/watch: Watch for any version number.
+    dbus-python does not use odd/even versioning, unlike dbus.
+  * d/clean: Remove all files that mention distutils.
+    This helps to verify that we are not relying on it for the Debian
+    package build any more.
+  * d/source/lintian-overrides: Silence uses-python-distutils tag
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 18 Jan 2023 20:42:02 +0000
+
+dbus-python (1.3.2-3) unstable; urgency=medium
+
+  * Increase an arbitrary test timeout to avoid intermittent FTBFS on
+    slower buildds such as alpha, mips64el and riscv64 (Closes: #1024210)
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 25 Nov 2022 11:28:44 +0000
+
+dbus-python (1.3.2-2) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Remove version constraints unnecessary since buster (oldstable)
+
+  [ Simon McVittie ]
+  * d/upstream/metadata: Update Gitlab URLs
+  * Drop transition for old debug package migration
+  * Build/test-depend on dbus-daemon instead of dbus.
+    The dbus component required by this package's tests is dbus-run-session;
+    it doesn't need a fully-featured system bus.
+  * Move dbus_py_test module into public dist-packages directory.
+    This is a workaround for #942720 in dh-python, which was lost in the
+    move from Autotools to Meson.
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 13 Nov 2022 18:28:33 +0000
+
+dbus-python (1.3.2-1) unstable; urgency=medium
+
+  * New upstream release
+  * d/rules: Don't run autoreconf, no longer needed
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 06 Sep 2022 23:48:17 +0100
+
+dbus-python (1.3.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * Build using Meson
+  * d/copyright: Update
+  * Work around #998059 in sphinx by resetting language environment
+    variables. This should make the documentation reproducible.
+  * Standards-Version: 4.6.1 (no changes required)
+  * Update Lintian overrides
+  * d/rules, d/clean: Continue to install .egg-info directory
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 06 Sep 2022 18:58:44 +0100
+
 dbus-python (1.2.18-3) unstable; urgency=medium
 
   * Don't do a separate build for python3.x-dbg (Closes: #994299)

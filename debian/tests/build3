@@ -17,7 +17,7 @@ test_build () {
 		-e 's/dbus_glib/dbus_test/g' \
 		< dbus_glib_bindings/module.c \
 		> "$AUTOPKGTEST_TMP/$PYTHON/module.c"
-	cp -a dbus-gmain "$AUTOPKGTEST_TMP/$PYTHON/"
+	cp -a subprojects/dbus-gmain "$AUTOPKGTEST_TMP/$PYTHON/"
 
 	( cd "$AUTOPKGTEST_TMP/$PYTHON" && ${CC:-cc} \
 		-Wall -Wextra -Wno-error \
@@ -27,7 +27,7 @@ test_build () {
 		-fPIC -shared \
 		-o _dbus_test_bindings$(${PYTHON}-config --extension-suffix) \
 		-D'DBUS_GMAIN_FUNCTION_NAME(name)=_dbus_py_glib_##name' \
-		-I. module.c dbus-gmain/dbus-gmain.c \
+		-Idbus-gmain module.c dbus-gmain/dbus-gmain.c \
 		$(${PYTHON}-config --cflags --libs) \
 		$(pkg-config --cflags --libs dbus-python glib-2.0) )
 

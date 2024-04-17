@@ -7,6 +7,11 @@
 binaries := $(shell dh_listpackages)
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow
+export DEB_PYTHON_INSTALL_LAYOUT = deb
+export LANGUAGE=C.UTF-8
+export LC_ALL=C.UTF-8
+unexport LANG
+unexport LC_MESSAGES
 
 include /usr/share/dpkg/default.mk
 
@@ -16,17 +21,21 @@ PYDEFAULTVER := $(shell py3versions --default --version)
 FLAVOURS := $(PYTHON3)
 
 %:
-	dh $@ $(DH_ADDONS) --buildsystem=autoconf
+	dh $@ $(DH_ADDONS) --buildsystem=meson
 build binary %-indep: DH_ADDONS=--with=sphinxdoc
+
+override_dh_autoreconf:
+	:
 
 override_dh_auto_configure-arch:
 	set -e; for x in $(FLAVOURS); do \
 		dh_auto_configure \
 			--builddirectory=build-$$x \
 			-- \
-			PYTHON=/usr/bin/python$$x \
-			--disable-documentation \
-			--enable-installed-tests \
+			-Dpython=/usr/bin/python$$x \
+			-Ddoc=false \
+			-Dinstalled_tests=true \
+			-Dinstalled_tests_subdir=python$$x \
 			--libdir=/usr/lib \
 			; \
 	done
@@ -34,12 +43,10 @@ override_dh_auto_configure-indep:
 	dh_auto_configure \
 		--builddirectory=build-indep \
 		-- \
-		PYTHON=/usr/bin/python3 \
+		-Dpython=/usr/bin/python3 \
 		--libdir=/usr/lib \
-		--disable-installed-tests \
-		--enable-documentation \
-		--docdir=/usr/share/doc/python-dbus-doc \
-		--htmldir=/usr/share/doc/python-dbus-doc/html \
+		-Dinstalled_tests=false \
+		-Ddoc=true \
 		${NULL}
 
 override_dh_auto_build-arch:
@@ -49,8 +56,6 @@ override_dh_auto_build-arch:
 			--arch \
 			--builddirectory=build-$$x \
 			-- \
-			installed_testdir='$${libexecdir}/installed-tests/$${PACKAGE_TARNAME}/'"python$$x" \
-			installed_test_metadir='$${datadir}/installed-tests/$${PACKAGE_TARNAME}/'"python$$x" \
 			$(NULL); \
 	done
 override_dh_auto_build-indep:
@@ -61,7 +66,13 @@ override_dh_auto_test-arch:
 		LC_ALL=C.UTF-8 \
 		PYTHON=/usr/bin/python$$x \
 		VERBOSE=1 \
-		dh_auto_test --no-parallel --arch --builddirectory=build-$$x; \
+		dh_auto_test \
+			--no-parallel \
+			--arch \
+			--builddirectory=build-$$x \
+			-- \
+			--timeout-multiplier 3 \
+			; \
 	done
 override_dh_auto_test-indep:
 	:
@@ -74,18 +85,9 @@ override_dh_auto_install-arch:
 			--builddirectory=build-$$x \
 			--destdir=debian/tmp \
 			-- \
-			installed_testdir='$${libexecdir}/installed-tests/$${PACKAGE_TARNAME}/'"python$$x" \
-			installed_test_metadir='$${datadir}/installed-tests/$${PACKAGE_TARNAME}/'"python$$x" \
-			pyexecdir='$${pythondir}' \
-			pythondir='$${libdir}/python3/dist-packages' \
 			; \
-		so=`/usr/bin/python$$x -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX') or sysconfig.get_config_var('SO'))"`; \
-		mv debian/tmp/usr/lib/python3/dist-packages/_dbus_bindings.so \
-			debian/tmp/usr/lib/python3/dist-packages/_dbus_bindings$$so; \
-		mv debian/tmp/usr/lib/python3/dist-packages/_dbus_glib_bindings.so \
-			debian/tmp/usr/lib/python3/dist-packages/_dbus_glib_bindings$$so; \
-		mv "debian/tmp/usr/libexec/installed-tests/dbus-python/python$$x/test/dbus_py_test.so" \
-			"debian/tmp/usr/lib/python3/dist-packages/dbus_py_test$$so"; \
+		mv debian/tmp/usr/libexec/installed-tests/dbus-python/python$$x/test/*.so \
+			debian/tmp/usr/lib/python3/dist-packages/; \
 	done
 	install -d debian/tmp/usr/lib/python3/dist-packages/dbus_python-${DEB_VERSION_UPSTREAM}.egg-info
 	install -m644 dbus_python.egg-info/PKG-INFO debian/tmp/usr/lib/python3/dist-packages/dbus_python-${DEB_VERSION_UPSTREAM}.egg-info/
@@ -137,17 +139,9 @@ override_dh_auto_clean:
 override_dh_missing:
 	dh_missing --fail-missing
 
-override_dh_strip:
-	dh_strip --dbgsym-migration='python3-dbg (<< 1.2.18-3~)'
-
 override_dh_python3:
 	dh_python3
 	set -e; for x in $(PYTHON3); do \
 		dh_python3 --shebang="/usr/bin/python$$x" \
 			/usr/libexec/installed-tests/dbus-python/python$$x; \
 	done
-
-ifeq ($(DEB_HOST_ARCH),mipsel)
-override_dh_dwz:
-	: # Skip dh_dwz on mipsel, https://bugs.debian.org/972269
-endif

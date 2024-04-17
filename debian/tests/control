@@ -9,7 +9,7 @@ Depends:
 
 Tests: python3
 Depends:
- dbus,
+ dbus-daemon,
  gnome-desktop-testing,
  python3-dbus-tests,
  python3-gi,
