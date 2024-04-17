@@ -358,6 +358,30 @@ Message_set_no_reply(Message *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Message_get_allow_interactive_authorization__doc__,
+"message.get_allow_interactive_authorization(bool) -> None\n"
+"Get allow interactive authorization flag.\n");
+static PyObject *
+Message_get_allow_interactive_authorization(Message *self, PyObject *unused UNUSED)
+{
+    if (!self->msg) return DBusPy_RaiseUnusableMessage();
+    return PyBool_FromLong(dbus_message_get_allow_interactive_authorization(self->msg));
+}
+
+
+PyDoc_STRVAR(Message_set_allow_interactive_authorization__doc__,
+"message.set_allow_interactive_authorization(bool) -> None\n"
+"Set allow interactive authorization flag to this message.\n");
+static PyObject *
+Message_set_allow_interactive_authorization(Message *self, PyObject *args)
+{
+    int value;
+    if (!PyArg_ParseTuple(args, "i", &value)) return NULL;
+    if (!self->msg) return DBusPy_RaiseUnusableMessage();
+    dbus_message_set_allow_interactive_authorization(self->msg, value ? TRUE : FALSE);
+    Py_RETURN_NONE;
+}
+
 PyDoc_STRVAR(Message_get_reply_serial__doc__,
 "message.get_reply_serial() -> long\n"
 "Returns the serial that the message is a reply to or 0 if none.\n");
@@ -392,7 +416,7 @@ static PyObject *
 Message_get_type(Message *self, PyObject *unused UNUSED)
 {
     if (!self->msg) return DBusPy_RaiseUnusableMessage();
-    return NATIVEINT_FROMLONG(dbus_message_get_type(self->msg));
+    return PyLong_FromLong(dbus_message_get_type(self->msg));
 }
 
 PyDoc_STRVAR(Message_get_serial__doc__,
@@ -466,7 +490,7 @@ Message_get_member(Message *self, PyObject *unused UNUSED)
     if (!c_str) {
         Py_RETURN_NONE;
     }
-    return NATIVESTR_FROMSTR(c_str);
+    return PyUnicode_FromString(c_str);
 }
 
 PyDoc_STRVAR(Message_has_member__doc__,
@@ -541,7 +565,7 @@ Message_get_path_decomposed(Message *self, PyObject *unused UNUSED)
         Py_RETURN_NONE;
     }
     for (ptr = paths; *ptr; ptr++) {
-        PyObject *str = NATIVESTR_FROMSTR(*ptr);
+        PyObject *str = PyUnicode_FromString(*ptr);
 
         if (!str) {
             Py_CLEAR(ret);
@@ -627,7 +651,7 @@ Message_get_sender(Message *self, PyObject *unused UNUSED)
     if (!c_str) {
         Py_RETURN_NONE;
     }
-    return NATIVESTR_FROMSTR(c_str);
+    return PyUnicode_FromString(c_str);
 }
 
 PyDoc_STRVAR(Message_has_sender__doc__,
@@ -673,7 +697,7 @@ Message_get_destination(Message *self, PyObject *unused UNUSED)
     if (!c_str) {
         Py_RETURN_NONE;
     }
-    return NATIVESTR_FROMSTR(c_str);
+    return PyUnicode_FromString(c_str);
 }
 
 PyDoc_STRVAR(Message_has_destination__doc__,
@@ -718,7 +742,7 @@ Message_get_interface(Message *self, PyObject *unused UNUSED)
     if (!c_str) {
         Py_RETURN_NONE;
     }
-    return NATIVESTR_FROMSTR(c_str);
+    return PyUnicode_FromString(c_str);
 }
 
 PyDoc_STRVAR(Message_has_interface__doc__,
@@ -763,7 +787,7 @@ Message_get_error_name(Message *self, PyObject *unused UNUSED)
     if (!c_str) {
         Py_RETURN_NONE;
     }
-    return NATIVESTR_FROMSTR(c_str);
+    return PyUnicode_FromString(c_str);
 }
 
 PyDoc_STRVAR(Message_set_error_name__doc__,
@@ -837,6 +861,10 @@ static PyMethodDef Message_tp_methods[] = {
       METH_NOARGS, Message_get_no_reply__doc__},
     {"set_no_reply", (PyCFunction) (void (*)(void))Message_set_no_reply,
       METH_VARARGS, Message_set_no_reply__doc__},
+    {"get_allow_interactive_authorization", (PyCFunction) (void (*)(void))Message_get_allow_interactive_authorization,
+    METH_NOARGS, Message_get_allow_interactive_authorization__doc__},
+    {"set_allow_interactive_authorization", (PyCFunction) (void (*)(void))Message_set_allow_interactive_authorization,
+    METH_VARARGS, Message_set_allow_interactive_authorization__doc__},
     {"get_reply_serial", (PyCFunction) (void (*)(void))Message_get_reply_serial,
       METH_NOARGS, Message_get_reply_serial__doc__},
     {"set_reply_serial", (PyCFunction) (void (*)(void))Message_set_reply_serial,

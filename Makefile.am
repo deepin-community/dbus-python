@@ -1,23 +1,32 @@
+# Copyright 2006-2022 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
 abs_top_srcdir = @abs_top_srcdir@
 abs_top_builddir = @abs_top_builddir@
 installed_testdir = ${libexecdir}/installed-tests/${PACKAGE_TARNAME}
 installed_test_testdir = ${installed_testdir}/test
 installed_test_metadir = ${datadir}/installed-tests/${PACKAGE_TARNAME}
 
-AM_DISTCHECK_CONFIGURE_FLAGS = PYTHON=$(PYTHON)
+AM_DISTCHECK_CONFIGURE_FLAGS = PYTHON=$(PYTHON) --with-python-prefix='$${prefix}' --with-python-exec-prefix='$${exec_prefix}'
 
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = dbus-gmain .
+SUBDIRS = subprojects/dbus-gmain .
 
 CLEANFILES = \
 	test/test-service.log \
 	$(NULL)
 EXTRA_DIST = \
+	.reuse/dep5 \
 	AUTHORS \
 	CONTRIBUTING.md \
 	COPYING \
+	LICENSES/GPL-3.0-or-later.txt \
+	LICENSES/LicenseRef-AutoconfArchiveException.txt \
+	LICENSES/MIT.txt \
 	dbus-python.pc.in \
 	doc/_static/.gitignore \
+	doc/maintainer-update-website.sh \
+	doc/meson.build \
 	examples/example-async-client.py \
 	examples/example-client.py \
 	examples/example-service.py \
@@ -28,14 +37,23 @@ EXTRA_DIST = \
 	examples/list-system-services.py \
 	examples/unix-fd-client.py \
 	examples/unix-fd-service.py \
+	meson.build \
+	meson_options.txt \
+	pyproject.toml \
+	setup.cfg \
 	setup.py \
 	test/TestSuitePythonService.service.in \
+	test/compiled.test.in \
+	test/installable/meson.build \
+	test/meson.build \
+	test/py.test.in \
+	test/sh.test.in \
 	test/tmp-session-bus.conf.in \
 	tools/check-c-style.sh \
 	tools/check-coding-style.mk \
 	tools/check-py-style.sh \
-	tools/check-whitespace.sh
-	tools/ci-build.sh \
+	tools/check-whitespace.sh \
+	tools/generate-pkginfo.py \
 	$(NULL)
 
 # === C code ===
@@ -43,6 +61,8 @@ EXTRA_DIST = \
 AM_CPPFLAGS = \
 	-include config.h \
 	-I$(top_srcdir)/include \
+	-I$(top_srcdir)/subprojects \
+	-I$(top_srcdir)/subprojects/dbus-gmain \
 	$(DBUS_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	$(PYTHON_CPPFLAGS) \
@@ -125,8 +145,8 @@ _dbus_bindings_la_SOURCES = \
 	dbus_bindings/validation.c \
 	$(NULL)
 
-dbus-gmain/libdbus-gmain.la:
-	$(MAKE) -C dbus-gmain
+subprojects/dbus-gmain/libdbus-gmain.la:
+	$(MAKE) -C subprojects/dbus-gmain
 
 _dbus_glib_bindings_la_LDFLAGS = \
 	$(pymod_ldflags) \
@@ -134,7 +154,7 @@ _dbus_glib_bindings_la_LDFLAGS = \
 	$(AM_LDFLAGS) \
 	$(NULL)
 _dbus_glib_bindings_la_LIBADD = \
-	dbus-gmain/libdbus-gmain.la \
+	subprojects/dbus-gmain/libdbus-gmain.la \
 	$(pymod_libadd) \
 	$(DBUS_LIBS) \
 	$(NULL)
@@ -174,12 +194,6 @@ nobase_python_PYTHON = \
     dbus/server.py \
     dbus/service.py \
     dbus/types.py
-
-if !HAVE_PYTHON_3
-nobase_python_PYTHON += \
-    dbus/gobject_service.py \
-    $(NULL)
-endif
 
 check_py_sources = $(nobase_python_PYTHON)
 include $(top_srcdir)/tools/check-coding-style.mk
@@ -241,6 +255,7 @@ dist_test_sh = \
 
 dist_test_py = \
 	test/test-client.py \
+	test/test-exception-py3.py \
 	test/test-p2p.py \
 	test/test-signals.py \
 	test/test-standalone.py \
@@ -258,12 +273,6 @@ dist_test_extra_scripts = \
 	test/test-service.py \
 	test/wait-for-name.py \
 	$(NULL)
-
-if HAVE_PYTHON_3
-dist_test_py += test/test-exception-py3.py
-else
-dist_test_py += test/test-exception-py2.py
-endif
 
 test_programs = \
 	test/test-import-repeatedly \
@@ -361,10 +370,16 @@ $(patsubst %,%.test,$(test_programs)): %.test: Makefile
 
 dist-hook:
 	echo $(VERSION) > $(distdir)/.version
+	$(MKDIR_P) $(distdir)/dbus_python.egg-info
 	touch $(distdir)/MANIFEST
 	touch $(distdir)/MANIFEST.in
-	( cd $(distdir) && $(PYTHON) setup.py egg_info )
-	cp $(distdir)/dbus_python.egg-info/PKG-INFO $(distdir)
+	touch $(distdir)/dbus_python.egg-info/SOURCES.txt
+	$(PYTHON) $(distdir)/tools/generate-pkginfo.py $(VERSION) $(distdir)/PKG-INFO
+	echo > $(distdir)/dbus_python.egg-info/dependency_links.txt
+	echo _dbus_bindings > $(distdir)/dbus_python.egg-info/top_level.txt
+	echo _dbus_glib_bindings >> $(distdir)/dbus_python.egg-info/top_level.txt
+	echo dbus >> $(distdir)/dbus_python.egg-info/top_level.txt
+	cp $(distdir)/PKG-INFO $(distdir)/dbus_python.egg-info/PKG-INFO
 	( cd $(distdir) && find -type d -o -print ) | \
 		LC_ALL=C sort | \
 		$(SED) -e 's|^\./||' \
@@ -417,31 +432,31 @@ uninstall-local-pycache:
 	rm -fr $(DESTDIR)$(pythondir)/dbus/mainloop/__pycache__
 
 if ENABLE_DOCUMENTATION
-all: doc/_build/.stamp
+all: doc/html/.stamp
 
-doc/_build/.stamp: $(nobase_python_PYTHON) \
+doc/html/.stamp: $(nobase_python_PYTHON) \
 			_dbus_bindings.la \
 			_dbus_glib_bindings.la \
 			$(sphinx_sources) \
 			Makefile \
 			$(NULL)
-	rm -rf doc/_build
-	$(MKDIR_P) doc/_build
+	rm -rf doc/html
+	$(MKDIR_P) doc/html
 	abs_top_srcdir='$(abs_top_srcdir)' \
 	abs_top_builddir='$(abs_top_builddir)' \
 	DBUS_PYTHON_NO_DEPRECATED=1 \
-	$(PYTHON) -m sphinx -b html $(abs_top_srcdir)/doc doc/_build
+	$(PYTHON) -m sphinx -b html $(abs_top_srcdir)/doc doc/html
 	touch $@
 
-maintainer-update-website: doc/_build/.stamp
+maintainer-update-website: doc/html/.stamp
 	DBUS_TOP_SRCDIR="$(abs_top_srcdir)" \
 	$(PYTHON) $(srcdir)/doc/redirects.py
-	rsync -rtvzPp --chmod=Dg+s,ug+rwX,o=rX doc/_build/ \
+	rsync -rtvzPp --chmod=Dg+s,ug+rwX,o=rX doc/html/ \
 	dbus.freedesktop.org:/srv/dbus.freedesktop.org/www/doc/dbus-python/
 
-install-data-local-sphinx: doc/_build/.stamp
+install-data-local-sphinx: doc/html/.stamp
 	$(mkinstalldirs) $(DESTDIR)$(htmldir)
-	cp -R doc/_build/* $(DESTDIR)$(htmldir)
+	cp -R doc/html/* $(DESTDIR)$(htmldir)
 
 uninstall-local-sphinx:
 	rm -fr $(DESTDIR)$(htmldir)
@@ -456,7 +471,7 @@ uninstall-local-sphinx:
 endif
 
 clean-local:
-	rm -rf doc/_build
+	rm -rf doc/html
 
 check_c_sources = \
 	$(_dbus_bindings_la_SOURCES) \
