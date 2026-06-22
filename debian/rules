@@ -33,7 +33,7 @@ override_dh_auto_configure-arch:
 			--builddirectory=build-$$x \
 			-- \
 			-Dpython=/usr/bin/python$$x \
-			-Ddoc=false \
+			-Ddoc=disabled \
 			-Dinstalled_tests=true \
 			-Dinstalled_tests_subdir=python$$x \
 			--libdir=/usr/lib \
@@ -46,7 +46,7 @@ override_dh_auto_configure-indep:
 		-Dpython=/usr/bin/python3 \
 		--libdir=/usr/lib \
 		-Dinstalled_tests=false \
-		-Ddoc=true \
+		-Ddoc=enabled \
 		${NULL}
 
 override_dh_auto_build-arch:
